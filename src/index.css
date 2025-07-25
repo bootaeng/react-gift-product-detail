@@ -12,6 +12,7 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
+<<<<<<< HEAD
 html,
 body,
 #root {
@@ -23,6 +24,9 @@ body,
   background-color: #fff;
   font-family: 'Pretendard', sans-serif;
 }
+=======
+
+>>>>>>> 5628913b9fe5647f65c620d00b2b3d263d7fd596
 a {
   font-weight: 500;
   color: #646cff;
@@ -34,12 +38,19 @@ a:hover {
 
 body {
   margin: 0;
+<<<<<<< HEAD
 
   padding: 0;
   min-width: 320px;
   min-height: 100vh;
   background-color: #fff;
   font-family: 'Pretendard', sans-serif;
+=======
+  display: flex;
+  place-items: center;
+  min-width: 320px;
+  min-height: 100vh;
+>>>>>>> 5628913b9fe5647f65c620d00b2b3d263d7fd596
 }
 
 h1 {
