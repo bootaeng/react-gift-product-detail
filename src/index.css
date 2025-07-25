@@ -12,7 +12,17 @@
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
-
+html,
+body,
+#root {
+  margin: 10;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  box-sizing: border-box;
+  background-color: #fff;
+  font-family: 'Pretendard', sans-serif;
+}
 a {
   font-weight: 500;
   color: #646cff;
@@ -24,10 +34,12 @@ a:hover {
 
 body {
   margin: 0;
-  display: flex;
-  place-items: center;
+
+  padding: 0;
   min-width: 320px;
   min-height: 100vh;
+  background-color: #fff;
+  font-family: 'Pretendard', sans-serif;
 }
 
 h1 {
