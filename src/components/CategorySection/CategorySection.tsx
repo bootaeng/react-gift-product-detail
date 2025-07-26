@@ -54,7 +54,6 @@ const Label = styled.p`
   color: ${({ theme }) => theme.colors.text.default};
 `
 
-// 비동기 함수 분리
 const fetchThemes = async () => {
   const res = await fetch('/api/themes')
   const json = await res.json()
