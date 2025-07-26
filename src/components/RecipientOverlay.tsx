@@ -199,7 +199,7 @@ export default function RecipientOverlay({
                   onClick={(e) => {
                     e.stopPropagation()
                     remove(index)
-                    const newList = getValues('recipients')
+                    const newList = Values('recipients')
                     onComplete(newList, false)
                   }}
                   style={{

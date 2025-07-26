@@ -1,11 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import axios from 'axios'
 import { toast } from 'react-toastify'
+import { useMutation } from '@tanstack/react-query'
 
 type AuthContextType = {
   user: { email: string; name: string } | null
   isLoggedIn: boolean
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => void
   logout: () => void
 }
 
@@ -27,18 +28,26 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }, [])
 
-  const login = async (email: string, password: string) => {
-    try {
+  const { mutate: login } = useMutation({
+    mutationFn: async ({
+      email,
+      password,
+    }: {
+      email: string
+      password: string
+    }) => {
       const res = await axios.post('/api/login', { email, password })
-
-      const { authToken, email: userEmail, name } = res.data.data
-      console.log('로그인 응답:', res.data)
-
+      return res.data.data
+    },
+    onSuccess: (data) => {
+      const { authToken, email: userEmail, name } = data
+      console.log('로그인 응답:', data)
       localStorage.setItem('authToken', authToken)
       const userInfo = { authToken, email: userEmail, name }
       localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(userInfo))
       setUser({ email: userEmail, name })
-    } catch (error: any) {
+    },
+    onError: (error: any) => {
       if (axios.isAxiosError(error)) {
         const status = error.response?.status
 
@@ -53,20 +62,21 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       } else {
         toast.error('오류가 발생했습니다.')
       }
-    }
-  }
+    },
+  })
 
   const logout = () => {
     setUser(null)
     localStorage.removeItem(STORAGE_KEY_USER)
+    localStorage.removeItem('authToken')
   }
 
   return (
     <AuthContext.Provider
       value={{
-        user,
+        user: user ?? null,
         isLoggedIn: !!user,
-        login,
+        login: (email, password) => login({ email, password }),
         logout,
       }}
     >
