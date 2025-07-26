@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import styled from '@emotion/styled'
+import { useQuery, useInfiniteQuery } from '@tanstack/react-query'
+import axios from 'axios'
+import { useRef, useEffect } from 'react'
 import RankingItem from '../components/RankingSection/RankingItem'
 import Layout from '../components/Layout'
-import axios from 'axios'
 import { PATHS } from '@/Root'
 
 const Wrapper = styled.section`
@@ -26,6 +27,7 @@ const Grid = styled.div`
   grid-template-columns: repeat(3, 1fr);
   gap: ${({ theme }) => theme.spacing.spacing4};
 `
+
 interface ThemeInfo {
   name: string
   title: string
@@ -43,75 +45,79 @@ interface Product {
     name?: string
   }
 }
+
+interface ProductListResponse {
+  list: Product[]
+  cursor: number
+  hasMoreList: boolean
+}
+
 export const CategoryItem = () => {
   const { themeId } = useParams()
   const navigate = useNavigate()
-
-  const [themeInfo, setThemeInfo] = useState<ThemeInfo | null>(null)
-  const [products, setProducts] = useState<Product[]>([])
-  const [cursor, setCursor] = useState(0)
-  const [hasMore, setHasMore] = useState(true)
-  const [isLoading, setIsLoading] = useState(false)
   const observerRef = useRef(null)
 
-  const loadMore = useCallback(async () => {
-    if (!themeId || isLoading || !hasMore) return
-    setIsLoading(true)
-    try {
-      const res = await axios.get(`/api/themes/${themeId}/products`, {
-        params: { cursor, limit: 10 },
-      })
-      const data = res.data.data
-      setProducts((prev) => [...prev, ...data.list])
-      setCursor(data.cursor)
-      setHasMore(data.hasMoreList)
-    } catch (err) {
-      console.error('loadMore error:', err)
-    } finally {
-      setIsLoading(false)
-    }
-  }, [themeId, cursor, isLoading, hasMore])
-
-  useEffect(() => {
-    if (!themeId) return
-
-    const fetchTheme = async () => {
-      try {
-        const res = await axios.get(`/api/themes/${themeId}/info`)
-        setThemeInfo(res.data.data)
-      } catch (error) {
-        if (axios.isAxiosError(error) && error.response?.status === 404) {
-          navigate(PATHS.HOME)
-        } else {
-          console.error(error)
-        }
+  const {
+    data: themeInfo,
+    isLoading: isThemeLoading,
+    isError: isThemeError,
+  } = useQuery<ThemeInfo>({
+    queryKey: ['themeInfo', themeId],
+    queryFn: async () => {
+      const res = await axios.get(`/api/themes/${themeId}/info`)
+      return res.data.data
+    },
+    enabled: !!themeId,
+    retry: false,
+    onError: (error: any) => {
+      if (axios.isAxiosError(error) && error.response?.status === 404) {
+        navigate(PATHS.HOME)
       }
-    }
+    },
+  })
 
-    fetchTheme()
-    loadMore()
-  }, [themeId, loadMore, navigate])
+  const {
+    data: productPages,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery<ProductListResponse>({
+    queryKey: ['themeProducts', themeId],
+    queryFn: async ({ pageParam = 0 }) => {
+      const res = await axios.get(`/api/themes/${themeId}/products`, {
+        params: { cursor: pageParam, limit: 10 },
+      })
+      return res.data.data
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) =>
+      lastPage.hasMoreList ? lastPage.cursor : undefined,
+    enabled: !!themeId,
+  })
 
   useEffect(() => {
     const el = observerRef.current
-    if (!el || !hasMore || isLoading) return
+    if (!el || !hasNextPage || isFetchingNextPage) return
 
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
-          loadMore()
+          fetchNextPage()
         }
       },
-      { threshold: 0.0 }
+      { threshold: 0 }
     )
 
     observer.observe(el)
     return () => {
       if (el) observer.unobserve(el)
     }
-  }, [hasMore, isLoading])
+  }, [fetchNextPage, hasNextPage, isFetchingNextPage])
 
-  if (!themeInfo) return <Wrapper>로딩 중...</Wrapper>
+  if (isThemeLoading) return <Wrapper>로딩 중...</Wrapper>
+  if (isThemeError || !themeInfo) return <Wrapper>오류 발생</Wrapper>
+
+  const allProducts = productPages?.pages.flatMap((page) => page.list) || []
 
   return (
     <Layout>
@@ -123,7 +129,7 @@ export const CategoryItem = () => {
       </Wrapper>
 
       <Grid>
-        {products.map((product, index) => (
+        {allProducts.map((product, index) => (
           <RankingItem
             key={product.id}
             rank={index + 1}

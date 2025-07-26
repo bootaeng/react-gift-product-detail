@@ -1,1 +1,1 @@
-# react-gift-order
+# react-gift-product-detail

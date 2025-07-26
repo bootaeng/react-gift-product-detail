@@ -1,6 +1,6 @@
 import styled from '@emotion/styled'
-import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
 
 const Section = styled.section`
   background-color: ${({ theme }) => theme.colors.background.default};
@@ -54,20 +54,31 @@ const Label = styled.p`
   color: ${({ theme }) => theme.colors.text.default};
 `
 
+// 비동기 함수 분리
+const fetchThemes = async () => {
+  const res = await fetch('/api/themes')
+  const json = await res.json()
+  return json.data
+}
+
 export const CategorySection = () => {
   const navigate = useNavigate()
-  const [themes, setThemes] = useState([])
 
-  useEffect(() => {
-    fetch('/api/themes')
-      .then((res) => res.json())
-      .then((data) => setThemes(data.data))
-      .catch((err) => console.error(err))
-  }, [])
+  const {
+    data: themes = [],
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ['themes'],
+    queryFn: fetchThemes,
+  })
 
   const handleThemeClick = (themeId: number) => {
     navigate(`/category/${themeId}`)
   }
+
+  if (isLoading) return <Section>로딩 중...</Section>
+  if (isError) return <Section>데이터 로딩 실패</Section>
 
   return (
     <Section>
