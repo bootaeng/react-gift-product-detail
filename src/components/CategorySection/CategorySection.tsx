@@ -33,7 +33,7 @@ const Item = styled.button`
   border-radius: 12px;
   transition: background-color 0.2s;
   &:hover {
-    background-color: ${({ theme }) => theme.colors.background.subtle};
+    background-color: ${({ theme }) => theme.colors.background.disabled};
   }
 
   &:focus,
@@ -60,6 +60,12 @@ const fetchThemes = async () => {
   return json.data
 }
 
+type Theme = {
+  themeId: number
+  name: string
+  image: string
+}
+
 export const CategorySection = () => {
   const navigate = useNavigate()
 
@@ -67,7 +73,7 @@ export const CategorySection = () => {
     data: themes = [],
     isLoading,
     isError,
-  } = useQuery({
+  } = useQuery<Theme[]>({
     queryKey: ['themes'],
     queryFn: fetchThemes,
   })

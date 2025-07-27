@@ -28,6 +28,16 @@ import {
 import { toast } from 'react-toastify'
 import { useQuery } from '@tanstack/react-query'
 
+type ProductSummary = {
+  id: number
+  name: string
+  price: number
+  imageURL?: string
+  brandInfo?: {
+    name?: string
+  }
+}
+
 export const OrderPage = () => {
   const { productId } = useParams()
   const navigate = useNavigate()
@@ -36,9 +46,9 @@ export const OrderPage = () => {
     data: product,
     isLoading: isProductLoading,
     isError,
-  } = useQuery({
+  } = useQuery<ProductSummary>({
     queryKey: ['productSummary', productId],
-    queryFn: async () => {
+    queryFn: async (): Promise<ProductSummary> => {
       const res = await fetch(`/api/products/${productId}/summary`)
       if (!res.ok) {
         if (res.status === 404) {
@@ -52,18 +62,21 @@ export const OrderPage = () => {
 
       const json = await res.json()
       if (!json?.data || typeof json.data.price !== 'number') {
-        toast.error('상품 정보가 올바르지 않습니다.')
-        return null
+        throw new Error('상품 정보가 올바르지 않습니다.')
       }
+
       return json.data
     },
     enabled: !!productId,
     retry: false,
-    onError: () => {
+  })
+
+  useEffect(() => {
+    if (isError) {
       toast.error('상품 정보 요청 중 오류 발생')
       navigate(PATHS.HOME)
-    },
-  })
+    }
+  }, [isError, navigate])
 
   const [orderCompleted, setOrderCompleted] = useState(false)
   const [selectedCardId, setSelectedCardId] = useState(CardData[0]?.id || null)
@@ -158,8 +171,8 @@ export const OrderPage = () => {
 
   const totalQuantity = recipients.reduce((sum, r) => sum + r.quantity, 0)
   const totalPrice =
-    typeof product?.price === 'number' && totalQuantity
-      ? product.price * totalQuantity
+    product && typeof product?.price === 'number' && totalQuantity
+      ? product?.price * totalQuantity
       : 0
 
   return (
