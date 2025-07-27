@@ -11,8 +11,17 @@ type AuthContextType = {
 }
 
 export const STORAGE_KEY_USER = 'userInfo'
-
+export const STORAGE_KEY_AUTH_TOKEN = 'authToken'
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
+
+const apiPost = async <T = any,>(
+  url: string,
+  body?: any,
+  config?: any
+): Promise<T> => {
+  const res = await axios.post(url, body, config)
+  return res.data.data ?? res.data
+}
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<
@@ -24,7 +33,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (stored) {
       const parsed = JSON.parse(stored)
       setUser({ email: parsed.email, name: parsed.name })
-      localStorage.setItem('authToken', parsed.authToken)
+      localStorage.setItem(STORAGE_KEY_AUTH_TOKEN, parsed.authToken)
     }
   }, [])
 
@@ -36,13 +45,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       email: string
       password: string
     }) => {
-      const res = await axios.post('/api/login', { email, password })
-      return res.data.data
+      return apiPost('/api/login', { email, password })
     },
     onSuccess: (data) => {
       const { authToken, email: userEmail, name } = data
       console.log('로그인 응답:', data)
-      localStorage.setItem('authToken', authToken)
+      localStorage.setItem(STORAGE_KEY_AUTH_TOKEN, authToken)
       const userInfo = { authToken, email: userEmail, name }
       localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(userInfo))
       setUser({ email: userEmail, name })
@@ -68,7 +76,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logout = () => {
     setUser(null)
     localStorage.removeItem(STORAGE_KEY_USER)
-    localStorage.removeItem('authToken')
+    localStorage.removeItem(STORAGE_KEY_AUTH_TOKEN)
   }
 
   return (
