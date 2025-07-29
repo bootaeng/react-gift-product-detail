@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import axios from 'axios'
 import { toast } from 'react-toastify'
 import { useMutation } from '@tanstack/react-query'
+import { apiClient } from '@/lib/apiClient'
 
 type AuthContextType = {
   user: { email: string; name: string } | null
@@ -13,15 +13,6 @@ type AuthContextType = {
 export const STORAGE_KEY_USER = 'userInfo'
 export const STORAGE_KEY_AUTH_TOKEN = 'authToken'
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
-
-const apiPost = async <T = any,>(
-  url: string,
-  body?: any,
-  config?: any
-): Promise<T> => {
-  const res = await axios.post(url, body, config)
-  return res.data.data ?? res.data
-}
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<
@@ -45,31 +36,23 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       email: string
       password: string
     }) => {
-      return apiPost('/api/login', { email, password })
+      return apiClient.post('/login', { email, password })
     },
     onSuccess: (data) => {
       const { authToken, email: userEmail, name } = data
-      console.log('로그인 응답:', data)
       localStorage.setItem(STORAGE_KEY_AUTH_TOKEN, authToken)
       const userInfo = { authToken, email: userEmail, name }
       localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(userInfo))
       setUser({ email: userEmail, name })
     },
     onError: (error: any) => {
-      if (axios.isAxiosError(error)) {
-        const status = error.response?.status
-
-        if (status && status >= 400 && status < 500) {
-          toast.error(
-            error.response?.data?.message ||
-              '아이디 또는 비밀번호가 올바르지 않습니다.'
-          )
-        } else {
-          toast.error('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.')
-        }
-      } else {
-        toast.error('오류가 발생했습니다.')
-      }
+      const status = error.response?.status
+      const message =
+        error?.response?.data?.message ||
+        (status && status >= 400 && status < 500
+          ? '아이디 또는 비밀번호가 올바르지 않습니다.'
+          : '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.')
+      toast.error(message)
     },
   })
 

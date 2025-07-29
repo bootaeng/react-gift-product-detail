@@ -1,19 +1,12 @@
-import axios from 'axios'
 import { useQuery } from '@tanstack/react-query'
 import type { Product } from '../../data/products'
-
-const ApiClient = {
-  get: async <T = any,>(url: string, config?: any): Promise<T> => {
-    const res = await axios.get(url, config)
-    return res.data.data ?? res.data
-  },
-}
+import { apiClient } from '@/lib/apiClient'
 
 const fetchRanking = async (
   targetType: string,
   rankType: string
 ): Promise<Product[]> => {
-  return ApiClient.get<Product[]>('/api/products/ranking', {
+  return apiClient.get<Product[]>('/products/ranking', {
     params: { targetType, rankType },
   })
 }

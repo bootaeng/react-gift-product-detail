@@ -1,8 +1,8 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import styled from '@emotion/styled'
 import { useQuery, useInfiniteQuery } from '@tanstack/react-query'
-import axios from 'axios'
 import { useRef, useEffect } from 'react'
+import { apiClient } from '@/lib/apiClient'
 import RankingItem from '../components/RankingSection/RankingItem'
 import Layout from '../components/Layout'
 import { PATHS } from '@/Root'
@@ -61,20 +61,21 @@ export const CategoryItem = () => {
     data: themeInfo,
     isLoading: isThemeLoading,
     isError: isThemeError,
+    error: themeError,
   } = useQuery<ThemeInfo>({
     queryKey: ['themeInfo', themeId],
     queryFn: async () => {
-      const res = await axios.get(`/api/themes/${themeId}/info`)
-      return res.data.data
+      return apiClient.get(`/themes/${themeId}/info`)
     },
     enabled: !!themeId,
     retry: false,
-    onError: (error: any) => {
-      if (axios.isAxiosError(error) && error.response?.status === 404) {
-        navigate(PATHS.HOME)
-      }
-    },
   })
+
+  useEffect(() => {
+    if (themeError && (themeError as any)?.response?.status === 404) {
+      navigate(PATHS.HOME)
+    }
+  }, [themeError, navigate])
 
   const {
     data: productPages,
@@ -84,10 +85,9 @@ export const CategoryItem = () => {
   } = useInfiniteQuery<ProductListResponse>({
     queryKey: ['themeProducts', themeId],
     queryFn: async ({ pageParam = 0 }) => {
-      const res = await axios.get(`/api/themes/${themeId}/products`, {
+      return apiClient.get(`/themes/${themeId}/products`, {
         params: { cursor: pageParam, limit: 10 },
       })
-      return res.data.data
     },
     initialPageParam: 0,
     getNextPageParam: (lastPage) =>

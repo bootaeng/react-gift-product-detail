@@ -1,7 +1,8 @@
 import styled from '@emotion/styled'
 import { useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import axios from 'axios'
+import { apiClient } from '@/lib/apiClient'
+
 const Section = styled.section`
   background-color: ${({ theme }) => theme.colors.background.default};
   border-radius: 12px;
@@ -55,8 +56,7 @@ const Label = styled.p`
 `
 
 const fetchThemes = async () => {
-  const res = await axios.get('/api/themes')
-  return res.data.data
+  return apiClient.get('/themes')
 }
 
 type Theme = {
