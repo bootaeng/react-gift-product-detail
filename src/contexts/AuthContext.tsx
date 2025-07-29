@@ -1,16 +1,17 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import axios from 'axios'
 import { toast } from 'react-toastify'
+import { useMutation } from '@tanstack/react-query'
+import { apiClient } from '@/lib/apiClient'
 
 type AuthContextType = {
   user: { email: string; name: string } | null
   isLoggedIn: boolean
-  login: (email: string, password: string) => Promise<void>
+  login: (email: string, password: string) => void
   logout: () => void
 }
 
 export const STORAGE_KEY_USER = 'userInfo'
-
+export const STORAGE_KEY_AUTH_TOKEN = 'authToken'
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
@@ -23,50 +24,50 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     if (stored) {
       const parsed = JSON.parse(stored)
       setUser({ email: parsed.email, name: parsed.name })
-      localStorage.setItem('authToken', parsed.authToken)
+      localStorage.setItem(STORAGE_KEY_AUTH_TOKEN, parsed.authToken)
     }
   }, [])
 
-  const login = async (email: string, password: string) => {
-    try {
-      const res = await axios.post('/api/login', { email, password })
-
-      const { authToken, email: userEmail, name } = res.data.data
-      console.log('로그인 응답:', res.data)
-
-      localStorage.setItem('authToken', authToken)
+  const { mutate: login } = useMutation({
+    mutationFn: async ({
+      email,
+      password,
+    }: {
+      email: string
+      password: string
+    }) => {
+      return apiClient.post('/login', { email, password })
+    },
+    onSuccess: (data) => {
+      const { authToken, email: userEmail, name } = data
+      localStorage.setItem(STORAGE_KEY_AUTH_TOKEN, authToken)
       const userInfo = { authToken, email: userEmail, name }
       localStorage.setItem(STORAGE_KEY_USER, JSON.stringify(userInfo))
       setUser({ email: userEmail, name })
-    } catch (error: any) {
-      if (axios.isAxiosError(error)) {
-        const status = error.response?.status
-
-        if (status && status >= 400 && status < 500) {
-          toast.error(
-            error.response?.data?.message ||
-              '아이디 또는 비밀번호가 올바르지 않습니다.'
-          )
-        } else {
-          toast.error('서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.')
-        }
-      } else {
-        toast.error('오류가 발생했습니다.')
-      }
-    }
-  }
+    },
+    onError: (error: any) => {
+      const status = error.response?.status
+      const message =
+        error?.response?.data?.message ||
+        (status && status >= 400 && status < 500
+          ? '아이디 또는 비밀번호가 올바르지 않습니다.'
+          : '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.')
+      toast.error(message)
+    },
+  })
 
   const logout = () => {
     setUser(null)
     localStorage.removeItem(STORAGE_KEY_USER)
+    localStorage.removeItem(STORAGE_KEY_AUTH_TOKEN)
   }
 
   return (
     <AuthContext.Provider
       value={{
-        user,
+        user: user ?? null,
         isLoggedIn: !!user,
-        login,
+        login: (email, password) => login({ email, password }),
         logout,
       }}
     >

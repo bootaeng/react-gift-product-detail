@@ -1,10 +1,9 @@
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import Layout from '@/components/Layout'
 import RecipientOverlay from '@/components/RecipientOverlay'
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import CardData from '@/data/CardData'
 import type { Recipient } from '@/components/RecipientOverlay'
-import { useNavigate } from 'react-router-dom'
 import { PATHS } from '@/Root'
 import { STORAGE_KEY_USER } from '@/contexts/AuthContext'
 import {
@@ -27,52 +26,57 @@ import {
   RecipientTable,
 } from '@/styles/OrderPage.styled'
 import { toast } from 'react-toastify'
+import { useQuery } from '@tanstack/react-query'
+
+type ProductSummary = {
+  id: number
+  name: string
+  price: number
+  imageURL?: string
+  brandInfo?: {
+    name?: string
+  }
+}
 
 export const OrderPage = () => {
   const { productId } = useParams()
   const navigate = useNavigate()
 
-  const [product, setProduct] = useState(null)
-
-  useEffect(() => {
-    const userInfo = JSON.parse(localStorage.getItem(STORAGE_KEY_USER) || '{}')
-    if (userInfo?.name) {
-      setSenderName(userInfo.name)
-    }
-  }, [])
-
-  useEffect(() => {
-    const fetchProduct = async () => {
-      try {
-        const res = await fetch(`/api/products/${productId}/summary`)
-        console.log('응답 상태 코드:', res.status)
-
-        if (!res.ok) {
-          const errorText = await res.text()
-          console.error('에러:', errorText)
+  const {
+    data: product,
+    isLoading: isProductLoading,
+    isError,
+  } = useQuery<ProductSummary>({
+    queryKey: ['productSummary', productId],
+    queryFn: async (): Promise<ProductSummary> => {
+      const res = await fetch(`/api/products/${productId}/summary`)
+      if (!res.ok) {
+        if (res.status === 404) {
           toast.error('존재하지 않는 상품입니다.')
           navigate(PATHS.HOME)
-          return
+        } else {
+          const text = await res.text()
+          throw new Error(`주문 실패: ${text}`)
         }
-
-        const data = await res.json()
-
-        if (!data?.data || typeof data.data.price !== 'number') {
-          console.error('예상과 다른 응답 구조:', data)
-          toast.error('상품 정보가 올바르지 않습니다.')
-          return
-        }
-
-        setProduct(data.data)
-      } catch (err) {
-        console.error('상품 정보 요청 중 오류 발생:', err)
-        toast.error('상품 정보 요청 중 오류 발생')
-        navigate(PATHS.HOME)
       }
-    }
 
-    fetchProduct()
-  }, [productId])
+      const json = await res.json()
+      if (!json?.data || typeof json.data.price !== 'number') {
+        throw new Error('상품 정보가 올바르지 않습니다.')
+      }
+
+      return json.data
+    },
+    enabled: !!productId,
+    retry: false,
+  })
+
+  useEffect(() => {
+    if (isError) {
+      toast.error('상품 정보 요청 중 오류 발생')
+      navigate(PATHS.HOME)
+    }
+  }, [isError, navigate])
 
   const [orderCompleted, setOrderCompleted] = useState(false)
   const [selectedCardId, setSelectedCardId] = useState(CardData[0]?.id || null)
@@ -88,6 +92,13 @@ export const OrderPage = () => {
     senderName: '',
     recipients: '',
   })
+
+  useEffect(() => {
+    const userInfo = JSON.parse(localStorage.getItem(STORAGE_KEY_USER) || '{}')
+    if (userInfo?.name) {
+      setSenderName(userInfo.name)
+    }
+  }, [])
 
   const handleOrder = async () => {
     const errors = {
@@ -117,6 +128,7 @@ export const OrderPage = () => {
             : `Bearer ${userInfo.authToken}`
       }
     }
+
     try {
       const res = await fetch('/api/order', {
         method: 'POST',
@@ -136,11 +148,9 @@ export const OrderPage = () => {
           })),
         }),
       })
+
       if (!res.ok) {
         const text = await res.text()
-
-        console.error('응답:', res.status)
-
         if (res.status === 401) {
           toast.error('로그인이 필요합니다.')
           navigate(PATHS.LOGIN)
@@ -153,7 +163,6 @@ export const OrderPage = () => {
 
       toast.success('주문이 완료되었습니다.')
       setOrderCompleted(true)
-
       navigate(PATHS.HOME)
     } catch (err) {
       toast.error('주문 요청 중 오류가 발생했습니다.')
@@ -162,8 +171,8 @@ export const OrderPage = () => {
 
   const totalQuantity = recipients.reduce((sum, r) => sum + r.quantity, 0)
   const totalPrice =
-    typeof product?.price === 'number' && totalQuantity
-      ? product.price * totalQuantity
+    product && typeof product?.price === 'number' && totalQuantity
+      ? product?.price * totalQuantity
       : 0
 
   return (
@@ -200,15 +209,7 @@ export const OrderPage = () => {
         </Section>
 
         <Section>
-          <Label
-            style={{
-              textAlign: 'left',
-              display: 'block',
-              marginBottom: '0.5rem',
-            }}
-          >
-            보내는 사람
-          </Label>
+          <Label>보내는 사람</Label>
           <Input
             placeholder="이름을 입력하세요."
             value={senderName}
@@ -229,7 +230,7 @@ export const OrderPage = () => {
               marginBottom: '0.75rem',
             }}
           >
-            <Label style={{ margin: 0 }}>받는 사람</Label>
+            <Label>받는 사람</Label>
             <button
               type="button"
               onClick={() => setRecipientOverlayOpen(true)}
@@ -289,15 +290,7 @@ export const OrderPage = () => {
         </Section>
 
         <Section>
-          <Label
-            style={{
-              textAlign: 'left',
-              display: 'block',
-              marginBottom: '0.5rem',
-            }}
-          >
-            상품 정보
-          </Label>
+          <Label>상품 정보</Label>
           <ProductInfo>
             {product?.imageURL ? (
               <img

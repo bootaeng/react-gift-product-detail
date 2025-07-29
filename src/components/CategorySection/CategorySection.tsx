@@ -1,6 +1,7 @@
 import styled from '@emotion/styled'
-import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useQuery } from '@tanstack/react-query'
+import { apiClient } from '@/lib/apiClient'
 
 const Section = styled.section`
   background-color: ${({ theme }) => theme.colors.background.default};
@@ -33,7 +34,7 @@ const Item = styled.button`
   border-radius: 12px;
   transition: background-color 0.2s;
   &:hover {
-    background-color: ${({ theme }) => theme.colors.background.subtle};
+    background-color: ${({ theme }) => theme.colors.background.disabled};
   }
 
   &:focus,
@@ -54,20 +55,34 @@ const Label = styled.p`
   color: ${({ theme }) => theme.colors.text.default};
 `
 
+const fetchThemes = async () => {
+  return apiClient.get('/themes')
+}
+
+type Theme = {
+  themeId: number
+  name: string
+  image: string
+}
+
 export const CategorySection = () => {
   const navigate = useNavigate()
-  const [themes, setThemes] = useState([])
 
-  useEffect(() => {
-    fetch('/api/themes')
-      .then((res) => res.json())
-      .then((data) => setThemes(data.data))
-      .catch((err) => console.error(err))
-  }, [])
+  const {
+    data: themes = [],
+    isLoading,
+    isError,
+  } = useQuery<Theme[]>({
+    queryKey: ['themes'],
+    queryFn: fetchThemes,
+  })
 
   const handleThemeClick = (themeId: number) => {
     navigate(`/category/${themeId}`)
   }
+
+  if (isLoading) return <Section>로딩 중...</Section>
+  if (isError) return <Section>데이터 로딩 실패</Section>
 
   return (
     <Section>
