@@ -93,7 +93,7 @@ export const OrderBar = styled.button`
   left: 50%;
   transform: translateX(-50%);
   width: 100%;
-  max-width: 600px;
+  max-width: 750px;
   background: #ffeb00;
   border: none;
   padding: 1rem 0;

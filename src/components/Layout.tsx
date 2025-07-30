@@ -11,7 +11,7 @@ const Wrapper = styled.div`
 
 const Inner = styled.div`
   width: 100%;
-  max-width: 600px;
+  max-width: 750px;
   margin: 0 auto;
   padding: 0 16px;
   box-sizing: border-box;

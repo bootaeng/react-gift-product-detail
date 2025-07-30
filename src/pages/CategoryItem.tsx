@@ -137,7 +137,11 @@ export const CategoryItem = () => {
             brand={product.brandInfo?.name || ''}
             name={product.name}
             price={product.price.sellingPrice}
-            onClick={() => navigate(`/order/${product.id}`)}
+            onClick={() =>
+              navigate(
+                PATHS.PRODUCT_DETAIL.replace(':productId', String(product.id))
+              )
+            }
           />
         ))}
       </Grid>

@@ -7,6 +7,7 @@ import MyPage from './pages/MyPage'
 import ProtectedRoute from './components/ProtectedRoute'
 import { AuthProvider } from './contexts/AuthContext'
 import OrderPage from './pages/OrderPage'
+import ProductDetailPage from './pages/productDetail'
 import { CategoryItem } from './pages/CategoryItem'
 export const PATHS = {
   HOME: '/',
@@ -15,6 +16,7 @@ export const PATHS = {
   ORDER: '/order/:productId',
   MY: '/my',
   CATEGORY: '/category/:themeId',
+  PRODUCT_DETAIL: '/product/:productId',
 } as const
 import { ToastContainer } from 'react-toastify'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
@@ -25,6 +27,10 @@ const authProtected = (element: React.ReactNode) => (
   <ProtectedRoute>{element}</ProtectedRoute>
 )
 const router = createBrowserRouter([
+  {
+    path: PATHS.PRODUCT_DETAIL,
+    element: authProtected(<ProductDetailPage />),
+  },
   {
     path: PATHS.LOGIN,
     element: <LoginPage />,
