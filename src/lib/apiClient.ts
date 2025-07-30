@@ -36,9 +36,5 @@ export const apiClient = {
     const res = await instance.delete(url, config)
     return res.data.data ?? res.data
   },
-  queryFn: async () => {
-    const res = await apiClient.get(`/products/${productId}`)
-    if (!res.data?.data) throw new Error('상품 응답 형식이 잘못되었습니다.')
-    return res.data.data
-  },
+  
 }
