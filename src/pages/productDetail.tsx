@@ -5,10 +5,11 @@ import { apiClient } from '@/lib/apiClient'
 import { PATHS } from '@/Root'
 import Layout from '@/components/Layout'
 import { Heart } from 'lucide-react'
+import ErrorBoundary from '@/components/ErrorBoundary'
 
-const ProductReview = lazy(() => import('@/components/ProductReview'))
+const ProductReview = lazy(() => import('../components/ProductReview'))
 const ProductAnnouncement = lazy(
-  () => import('@/components/ProductAnnouncement')
+  () => import('../components/ProductAnnouncement')
 )
 
 const TAB_LABELS = ['상품설명', '선물후기', '상세정보']
@@ -187,17 +188,21 @@ const ProductDetailPage = () => {
           )}
 
           {selectedTab === 1 && (
-            <Suspense fallback={<div>후기 로딩 중...</div>}>
-              <ProductReview reviews={highlightReview?.reviews || []} />
-            </Suspense>
+            <ErrorBoundary>
+              <Suspense fallback={<div>후기 로딩 중...</div>}>
+                <ProductReview reviews={highlightReview?.reviews || []} />
+              </Suspense>
+            </ErrorBoundary>
           )}
 
           {selectedTab === 2 && (
-            <Suspense fallback={<div>상세정보 로딩 중...</div>}>
-              <ProductAnnouncement
-                announcements={detail?.announcements || []}
-              />
-            </Suspense>
+            <ErrorBoundary>
+              <Suspense fallback={<div>상세정보 로딩 중...</div>}>
+                <ProductAnnouncement
+                  announcements={detail?.announcements || []}
+                />
+              </Suspense>
+            </ErrorBoundary>
           )}
         </div>
       </div>
