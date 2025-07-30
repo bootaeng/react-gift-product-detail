@@ -1,10 +1,15 @@
 import { useParams, useNavigate, generatePath } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense, lazy } from 'react'
 import { apiClient } from '@/lib/apiClient'
 import { PATHS } from '@/Root'
 import Layout from '@/components/Layout'
 import { Heart } from 'lucide-react'
+
+const ProductReview = lazy(() => import('@/components/ProductReview'))
+const ProductAnnouncement = lazy(
+  () => import('@/components/ProductAnnouncement')
+)
 
 const TAB_LABELS = ['상품설명', '선물후기', '상세정보']
 
@@ -74,18 +79,12 @@ const ProductDetailPage = () => {
 
     localStorage.setItem(
       `wish_${productId}`,
-      JSON.stringify({
-        wished: newWished,
-        wishCount: newWishCount,
-      })
+      JSON.stringify({ wished: newWished, wishCount: newWishCount })
     )
   }
 
   const handleOrderClick = () => {
-    if (!product?.id) {
-      console.error('유효하지 않은 상품 ID입니다:', product)
-      return
-    }
+    if (!product?.id) return
     const path = generatePath(PATHS.ORDER, { productId: String(product.id) })
     navigate(path)
   }
@@ -111,7 +110,7 @@ const ProductDetailPage = () => {
             <img
               src={product.imageURL}
               alt={product.name}
-              style={{ width: '100%', maxWidth: '100%', objectFit: 'contain' }}
+              style={{ width: '100%', objectFit: 'contain' }}
             />
           ) : (
             <div
@@ -121,16 +120,10 @@ const ProductDetailPage = () => {
         </div>
 
         <div style={{ padding: '1rem' }}>
-          <h2
-            style={{
-              fontWeight: 'bold',
-              fontSize: '1.1rem',
-              textAlign: 'left',
-            }}
-          >
+          <h2 style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
             {product.name}
           </h2>
-          <p style={{ fontSize: '1.1rem', fontWeight: 600, textAlign: 'left' }}>
+          <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>
             {product.price?.sellingPrice.toLocaleString()}원
           </p>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -170,96 +163,41 @@ const ProductDetailPage = () => {
           {selectedTab === 0 && detail && (
             <div style={{ overflowX: 'auto' }}>
               <div
-                style={{
-                  minWidth: '100%',
-                  wordBreak: 'break-word',
-                }}
+                style={{ minWidth: '100%', wordBreak: 'break-word' }}
                 dangerouslySetInnerHTML={{
-                  __html: `<style>
-          img, iframe, video {
-            max-width: 100%;
-            height: auto;
-          }
-          table {
-            width: 100% !important;
-            border-collapse: collapse;
-          }
-          * {
-            box-sizing: border-box;
-          }
-        </style>
-        ${detail.description}
-      `,
+                  __html: `
+                    <style>
+                      img, iframe, video {
+                        max-width: 100%;
+                        height: auto;
+                      }
+                      table {
+                        width: 100% !important;
+                        border-collapse: collapse;
+                      }
+                      * {
+                        box-sizing: border-box;
+                      }
+                    </style>
+                    ${detail.description}
+                  `,
                 }}
               />
             </div>
           )}
 
           {selectedTab === 1 && (
-            <div>
-              {highlightReview?.reviews?.length > 0
-                ? highlightReview.reviews.map((r) => (
-                    <div key={r.id} style={{ marginBottom: '20px' }}>
-                      <strong style={{ fontSize: '14px', color: '#333' }}>
-                        {r.authorName}
-                      </strong>
-                      <p
-                        style={{
-                          margin: '8px 0 0 0',
-                          color: '#666',
-                          lineHeight: '1.5',
-                        }}
-                      >
-                        {r.content}
-                      </p>
-                    </div>
-                  ))
-                : '후기 없음'}
-            </div>
+            <Suspense fallback={<div>후기 로딩 중...</div>}>
+              <ProductReview reviews={highlightReview?.reviews || []} />
+            </Suspense>
           )}
 
           {selectedTab === 2 && (
-            <div>
-              {detailLoading ? (
-                <div>상세정보 로딩 중...</div>
-              ) : detailError ? (
-                <div>
-                  상세정보를 가져올 수 없습니다:{' '}
-                  {(detailError as Error).message}
-                </div>
-              ) : detail?.announcements?.length > 0 ? (
-                <div>
-                  {detail.announcements
-                    .sort((a, b) => a.displayOrder - b.displayOrder)
-                    .map((a, i) => (
-                      <div key={i} style={{ marginBottom: '24px' }}>
-                        <div
-                          style={{
-                            fontWeight: 'bold',
-                            fontSize: '16px',
-                            color: '#333',
-                            marginBottom: '8px',
-                          }}
-                        >
-                          {a.name}
-                        </div>
-                        <div
-                          style={{
-                            color: '#666',
-                            fontSize: '14px',
-                            lineHeight: '1.5',
-                            whiteSpace: 'pre-wrap',
-                          }}
-                        >
-                          {a.value}
-                        </div>
-                      </div>
-                    ))}
-                </div>
-              ) : (
-                <div>상세정보 없음</div>
-              )}
-            </div>
+            <Suspense fallback={<div>상세정보 로딩 중...</div>}>
+              <ProductAnnouncement
+                announcements={detail?.announcements || []}
+              />
+            </Suspense>
           )}
         </div>
       </div>
