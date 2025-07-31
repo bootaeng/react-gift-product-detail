@@ -1,16 +1,21 @@
 import { useParams, useNavigate, generatePath } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
-import { useState, useEffect, Suspense, lazy } from 'react'
+import { useState, useEffect } from 'react'
 import { apiClient } from '@/lib/apiClient'
 import { PATHS } from '@/Root'
 import Layout from '@/components/Layout'
+import ProductSummary from '@/components/ProductSummary'
+import ProductTabPanel from '@/components/ProductTabPanel'
+import {
+  PageWrapper,
+  TabBar,
+  TabButton,
+  BottomBar,
+  WishButton,
+  WishCount,
+  OrderButton,
+} from '@/styles/detail'
 import { Heart } from 'lucide-react'
-import ErrorBoundary from '@/components/ErrorBoundary'
-
-const ProductReview = lazy(() => import('../components/ProductReview'))
-const ProductAnnouncement = lazy(
-  () => import('../components/ProductAnnouncement')
-)
 
 const TAB_LABELS = ['상품설명', '선물후기', '상세정보']
 
@@ -32,11 +37,7 @@ const ProductDetailPage = () => {
     enabled: !!productId,
   })
 
-  const {
-    data: detail,
-    isLoading: detailLoading,
-    error: detailError,
-  } = useQuery({
+  const { data: detail } = useQuery({
     queryKey: ['productDetailInfo', productId],
     queryFn: () => apiClient.get(`/products/${productId}/detail`),
     enabled: !!productId,
@@ -45,7 +46,7 @@ const ProductDetailPage = () => {
   const { data: highlightReview } = useQuery({
     queryKey: ['productReview', productId],
     queryFn: () => apiClient.get(`/products/${productId}/highlight-review`),
-    enabled: !!productId,
+    enabled: !!productId && selectedTab === 1,
   })
 
   const { data: wishData } = useQuery({
@@ -55,10 +56,10 @@ const ProductDetailPage = () => {
   })
 
   useEffect(() => {
-    const savedWishData = localStorage.getItem(`wish_${productId}`)
-    if (savedWishData) {
+    const saved = localStorage.getItem(`wish_${productId}`)
+    if (saved) {
       const { wished: savedWished, wishCount: savedWishCount } =
-        JSON.parse(savedWishData)
+        JSON.parse(saved)
       setWished(savedWished)
       setWishCount(savedWishCount)
     }
@@ -71,17 +72,40 @@ const ProductDetailPage = () => {
     }
   }, [wishData, productId])
 
-  const handleWishToggle = () => {
+  const mockToggleWishApi = (): Promise<void> => {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        const success = Math.random() > 0.3
+        success ? resolve() : reject(new Error('요청 실패: 서버 오류'))
+      }, 1000)
+    })
+  }
+
+  const handleWishToggle = async () => {
+    const prevWished = wished
+    const prevWishCount = wishCount
+
     const newWished = !wished
     const newWishCount = newWished ? wishCount + 1 : Math.max(0, wishCount - 1)
 
     setWished(newWished)
     setWishCount(newWishCount)
-
     localStorage.setItem(
       `wish_${productId}`,
       JSON.stringify({ wished: newWished, wishCount: newWishCount })
     )
+
+    try {
+      await mockToggleWishApi()
+    } catch (error) {
+      alert('다시 시도해주세요.')
+      setWished(prevWished)
+      setWishCount(prevWishCount)
+      localStorage.setItem(
+        `wish_${productId}`,
+        JSON.stringify({ wished: prevWished, wishCount: prevWishCount })
+      )
+    }
   }
 
   const handleOrderClick = () => {
@@ -105,160 +129,39 @@ const ProductDetailPage = () => {
 
   return (
     <Layout>
-      <div style={{ maxWidth: '750px', margin: '0 auto' }}>
-        <div style={{ width: '100%', height: 'auto' }}>
-          {product?.imageURL ? (
-            <img
-              src={product.imageURL}
-              alt={product.name}
-              style={{ width: '100%', objectFit: 'contain' }}
-            />
-          ) : (
-            <div
-              style={{ width: '100%', height: '240px', background: '#eee' }}
-            />
-          )}
-        </div>
+      <PageWrapper>
+        <ProductSummary product={product} />
 
-        <div style={{ padding: '1rem' }}>
-          <h2 style={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
-            {product.name}
-          </h2>
-          <p style={{ fontSize: '1.1rem', fontWeight: 600 }}>
-            {product.price?.sellingPrice.toLocaleString()}원
-          </p>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <img
-              src={product.brandInfo?.imageURL}
-              alt={product.brandInfo?.name}
-              width={20}
-              height={20}
-            />
-            <span style={{ fontSize: 14 }}>{product.brandInfo?.name}</span>
-          </div>
-        </div>
-
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-around',
-            borderBottom: '1px solid #ddd',
-          }}
-        >
+        <TabBar>
           {TAB_LABELS.map((label, i) => (
-            <button
+            <TabButton
               key={label}
+              selected={selectedTab === i}
               onClick={() => setSelectedTab(i)}
-              style={{
-                padding: '1rem',
-                fontWeight: selectedTab === i ? 'bold' : 'normal',
-                borderBottom: selectedTab === i ? '2px solid black' : 'none',
-              }}
             >
               {label}
-            </button>
+            </TabButton>
           ))}
-        </div>
+        </TabBar>
 
-        <div style={{ padding: '1rem', textAlign: 'left' }}>
-          {selectedTab === 0 && detail && (
-            <div style={{ overflowX: 'auto' }}>
-              <div
-                style={{ minWidth: '100%', wordBreak: 'break-word' }}
-                dangerouslySetInnerHTML={{
-                  __html: `
-                    <style>
-                      img, iframe, video {
-                        max-width: 100%;
-                        height: auto;
-                      }
-                      table {
-                        width: 100% !important;
-                        border-collapse: collapse;
-                      }
-                      * {
-                        box-sizing: border-box;
-                      }
-                    </style>
-                    ${detail.description}
-                  `,
-                }}
-              />
-            </div>
-          )}
+        <ProductTabPanel
+          selectedTab={selectedTab}
+          detail={detail}
+          highlightReview={highlightReview}
+        />
+      </PageWrapper>
 
-          {selectedTab === 1 && (
-            <ErrorBoundary>
-              <Suspense fallback={<div>후기 로딩 중...</div>}>
-                <ProductReview reviews={highlightReview?.reviews || []} />
-              </Suspense>
-            </ErrorBoundary>
-          )}
-
-          {selectedTab === 2 && (
-            <ErrorBoundary>
-              <Suspense fallback={<div>상세정보 로딩 중...</div>}>
-                <ProductAnnouncement
-                  announcements={detail?.announcements || []}
-                />
-              </Suspense>
-            </ErrorBoundary>
-          )}
-        </div>
-      </div>
-
-      <div
-        style={{
-          position: 'fixed',
-          bottom: 0,
-          width: '100%',
-          display: 'flex',
-          height: '55px',
-          borderTop: '1px solid #eee',
-          backgroundColor: '#fff',
-          maxWidth: '750px',
-          margin: '0 auto',
-          left: 0,
-          right: 0,
-        }}
-      >
-        <button
-          style={{
-            flex: 1,
-            border: 'none',
-            background: 'none',
-            display: 'flex',
-            flexDirection: 'column',
-            alignItems: 'center',
-            padding: '0.5rem',
-            cursor: 'pointer',
-          }}
-          onClick={handleWishToggle}
-        >
+      <BottomBar>
+        <WishButton onClick={handleWishToggle}>
           <Heart
             color={wished ? 'red' : 'black'}
             fill={wished ? 'red' : 'none'}
             size={20}
           />
-          <span style={{ fontSize: '12px', marginTop: '2px' }}>
-            {wishCount}
-          </span>
-        </button>
-        <button
-          style={{
-            flex: 4,
-            backgroundColor: '#ffeb00',
-            border: 'none',
-            fontWeight: 'bold',
-            fontSize: '1.1rem',
-            height: '100%',
-            cursor: 'pointer',
-          }}
-          onClick={handleOrderClick}
-        >
-          주문하기
-        </button>
-      </div>
+          <WishCount>{wishCount}</WishCount>
+        </WishButton>
+        <OrderButton onClick={handleOrderClick}>주문하기</OrderButton>
+      </BottomBar>
     </Layout>
   )
 }
