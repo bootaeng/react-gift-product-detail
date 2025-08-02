@@ -55,7 +55,7 @@ export const RankingSection = () => {
     return (localStorage.getItem('selectedTab') as TabLabel) || '받고 싶어한'
   })
 
-  const { data, loading, error } = useRankingProducts(
+  const { data, loading, hasError } = useRankingProducts(
     filterToTargetType(selectedFilter),
     tabToRankType(selectedTab)
   )
@@ -70,8 +70,8 @@ export const RankingSection = () => {
     localStorage.setItem('selectedTab', tab)
   }
 
+  if (hasError) return <Section>불러오기 실패</Section>
   if (loading) return <Section>로딩 중...</Section>
-  if (error) return <Section>{error}</Section>
 
   return (
     <Section>
